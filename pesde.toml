@@ -1,0 +1,11 @@
+name = "4x8matrix/sandbox_luau"
+version = "0.1.0"
+description = "A luau sandbox, for evaluating luau code."
+authors = ["AsyncMatrix (hi@asyncmatrix.dev)"]
+license = "MIT"
+
+[target]
+environment = "luau"
+
+[indices]
+default = "https://github.com/pesde-pkg/index"
