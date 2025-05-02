@@ -245,6 +245,15 @@ function SandboxLuau.Prototype.Eval(
 		return
 	end
 
+	Luau.lua_getfield(co, Luau.LUA_REGISTRYINDEX, Wasm.cstr("__ENV")) -- +1: env
+
+	if Luau.lua_istable(co, -1) == 1 then
+		Luau.lua_pushvalue(co, -1)
+		Luau.lua_setfenv(co, -3)
+	end
+
+	Luau.lua_pop(co, 1) -- pop env
+
 	local status = Luau.lua_resume(co, self.L, 0)
 
 	if status ~= Luau.LUA_OK and status ~= Luau.LUA_YIELD then

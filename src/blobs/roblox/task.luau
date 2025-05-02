@@ -67,4 +67,7 @@ end
 function task.cancel(co)
 	coroutine.close(co)
 end
+
+glob.set("task", task)
+glob.set("async", nil)
 ]]

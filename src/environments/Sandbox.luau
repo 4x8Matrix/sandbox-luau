@@ -7,6 +7,7 @@ local Scheduler = require("../modules/Scheduler")
 return function(sandbox)
 	sandbox:LoadEnvironment("Luau")
 	sandbox:LoadLibrary("async")
+	sandbox:LoadLibrary("glob")
 
 	Scheduler.init(sandbox.L)
 
