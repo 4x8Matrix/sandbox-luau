@@ -56,7 +56,13 @@ SandboxLuau.Prototype = {}
 	```
 ]=]
 function SandboxLuau.Prototype.LoadLibrary(self: Sandbox, library: Library): ()
-	local callback = require(`./libraries/{library}`)
+	local callback
+
+	if script then
+		callback = require((script :: any).libraries[library])
+	else
+		callback = require(`./libraries/{library}`)
+	end
 
 	callback(self)
 end
@@ -76,7 +82,13 @@ end
 	UNC environment depends on the Roblox environment, and so on..
 ]=]
 function SandboxLuau.Prototype.LoadEnvironment(self: Sandbox, env: Environment): ()
-	local callback = require(`./environments/{env}`)
+	local callback
+
+	if script then
+		callback = require((script :: any).environments[env])
+	else
+		callback = require(`./environments/{env}`)
+	end
 
 	table.insert(self.Environments, env)
 
@@ -113,7 +125,13 @@ end
 	-- 		}
 ]=]
 function SandboxLuau.Prototype.LoadBlob(self: Sandbox, blob: Blob): ()
-	local blobData = require(`./blobs/{blob}`)
+	local blobData
+
+	if script then
+		blobData = require((script :: any).blobs[blob])
+	else
+		blobData = require(`./blobs/{blob}`)
+	end
 
 	self:Eval(blobData)
 end

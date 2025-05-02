@@ -1,0 +1,15 @@
+{
+	"rules": [
+		{
+			"rule": "convert_require",
+			"current": "path",
+			"target": {
+				"name": "roblox",
+				"indexing_style": "property"
+			}
+		},
+		"remove_comments",
+		"remove_empty_do",
+		"remove_unused_if_branch"
+	]
+}

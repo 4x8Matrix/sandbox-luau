@@ -15,24 +15,39 @@ return function(sandbox)
 
 	Scheduler.init(sandbox.L)
 
-	Reflector.reflectUserdataInto(sandbox.L, "userSettings")
-	Luau.lua_setglobal(sandbox.L, Wasm.cstr("userSettings"))
+	Luau.lua_pushcfunction(
+		sandbox.L,
+		Wasm.cfn(function(L)
+			Reflector.reflectUserdataInto(L, UserSettings())
 
-	Reflector.reflectUserdataInto(sandbox.L, "settings")
+			return 1
+		end),
+		Wasm.cstr("")
+	)
+	Luau.lua_setglobal(sandbox.L, Wasm.cstr("UserSettings"))
+
+	Luau.lua_pushcfunction(
+		sandbox.L,
+		Wasm.cfn(function(L)
+			Reflector.reflectUserdataInto(L, settings())
+
+			return 1
+		end),
+		Wasm.cstr("")
+	)
 	Luau.lua_setglobal(sandbox.L, Wasm.cstr("settings"))
 
-	Reflector.reflectUserdataInto(sandbox.L, "script")
+	Reflector.reflectUserdataInto(sandbox.L, script)
 	Luau.lua_setglobal(sandbox.L, Wasm.cstr("script"))
 
-	Reflector.reflectUserdataInto(sandbox.L, "game")
+	Reflector.reflectUserdataInto(sandbox.L, game)
 	Luau.lua_setglobal(sandbox.L, Wasm.cstr("game"))
 
-	Reflector.reflectUserdataInto(sandbox.L, "workspace")
+	Reflector.reflectUserdataInto(sandbox.L, workspace)
 	Luau.lua_setglobal(sandbox.L, Wasm.cstr("workspace"))
 
-	sandbox:LoadBlob("pp")
-	sandbox:LoadBlob("roblox/task")
-	sandbox:LoadBlob("roblox/env")
+	sandbox:LoadBlob("roblox_task")
+	sandbox:LoadBlob("roblox_env")
 
 	sandbox:AddToScheduler(function()
 		Scheduler.schedule(sandbox.L)

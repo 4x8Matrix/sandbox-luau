@@ -1,0 +1,15 @@
+{
+    "name": "Sandbox Luau",
+    "tree": {
+        "$className": "DataModel",
+        "ReplicatedStorage": {
+            "$className": "ReplicatedStorage",
+            "Packages": {
+                "$className": "Folder",
+                "SandboxLuau": {
+                    "$path": "out"
+                }
+            }
+        }
+    }
+}
