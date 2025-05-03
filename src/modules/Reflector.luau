@@ -20,6 +20,9 @@ local userdataId = 0
 -- map of unique userdata ids to userdata objects
 local userdataIdMap: { [number]: any } = {}
 
+-- opposite of the above, maps userdatas to ids
+local idUserdataMap: { [number]: any } = {}
+
 -- map of userdata pointers to userdata ids
 local userdataPointers: { [number]: number } = {}
 
@@ -76,6 +79,7 @@ function Reflector.reflectUserdataInto(L: Luau.LuaState, userdata: any): ()
 
 	userdataIdMap[index] = userdata
 	userdataPointers[userdataPtr] = index
+	idUserdataMap[userdata] = userdataPtr
 end
 
 --[[
@@ -196,10 +200,11 @@ function Reflector.init(L: Luau.LuaState)
 		USERDATA_TAG,
 		Wasm.cfn(function(_L, userdataPtr)
 			local index = userdataPointers[userdataPtr]
-			local _instance = userdataIdMap[index]
+			local userdata = userdataIdMap[index]
 
 			userdataIdMap[index] = nil
 			userdataPointers[userdataPtr] = nil
+			idUserdataMap[userdata] = nil
 
 			return 0
 		end)
@@ -209,7 +214,7 @@ function Reflector.init(L: Luau.LuaState)
 		for metamethod, callback in
 			{
 				__namecall = function(L)
-					local realObject = Reflector.reflectUserdataFrom(L, 1)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
 					local methodName = Wasm.luastr(Luau.lua_namecallatom(L, 0))
 
 					local arguments = {}
@@ -218,8 +223,8 @@ function Reflector.init(L: Luau.LuaState)
 						table.insert(arguments, Reflector.reflectFrom(L, index))
 					end
 
-					local method = realObject[methodName]
-					local response = table.pack(method(realObject, table.unpack(arguments)))
+					local method = instance[methodName]
+					local response = table.pack(method(instance, table.unpack(arguments)))
 					local responseCount = table.maxn(response)
 
 					if responseCount ~= 0 then
@@ -233,28 +238,154 @@ function Reflector.init(L: Luau.LuaState)
 					end
 				end,
 				__index = function(L)
-					local realObject = Reflector.reflectUserdataFrom(L, -2)
+					local instance = Reflector.reflectUserdataFrom(L, -2)
 					local index = Wasm.luastr(Luau.lua_tostring(L, -1))
 
-					Reflector.reflectInto(L, realObject[index])
+					Reflector.reflectInto(L, instance[index])
 
 					return 1
 				end,
 				__newindex = function(L)
-					local realObject = Reflector.reflectUserdataFrom(L, -3)
+					local instance = Reflector.reflectUserdataFrom(L, -3)
 					local index = Wasm.luastr(Luau.lua_tostring(L, -2))
 					local value = Reflector.reflectFrom(L, -3)
 
-					realObject[index] = value
+					instance[index] = value
 
 					return 0
 				end,
-				__tostring = function(L)
-					local realObject = Reflector.reflectUserdataFrom(L, -1)
+				__call = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
 
-					Luau.lua_pushstring(L, Wasm.cstr(realObject.Name))
+					local arguments = {}
+
+					for index = 2, Luau.lua_gettop(L) do
+						table.insert(arguments, Reflector.reflectFrom(L, index))
+					end
+
+					local response = table.pack(instance(table.unpack(arguments)))
+					local responseCount = table.maxn(response)
+
+					if responseCount ~= 0 then
+						for index = 1, responseCount do
+							Reflector.reflectInto(L, response[index])
+						end
+
+						return responseCount
+					else
+						return 0
+					end
+				end,
+				__tostring = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+
+					Reflector.reflectInto(L, Wasm.cstr(instance.Name))
 
 					return 1
+				end,
+				__eq = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+					local targetInstance = Reflector.reflectUserdataFrom(L, 2)
+
+					Reflector.reflectInto(L, instance == targetInstance and 1 or 0)
+
+					return 1
+				end,
+				__concat = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+					local targetInstance = Reflector.reflectUserdataFrom(L, 2)
+
+					Reflector.reflectInto(L, instance .. targetInstance)
+
+					return 1
+				end,
+				__unm = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+
+					Reflector.reflectInto(L, -instance)
+
+					return 1
+				end,
+				__add = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+					local component = Reflector.reflectUserdataFrom(L, 2)
+
+					Reflector.reflectInto(L, instance + component)
+
+					return 1
+				end,
+				__sub = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+					local component = Reflector.reflectUserdataFrom(L, 2)
+
+					Reflector.reflectInto(L, instance - component)
+
+					return 1
+				end,
+				__mul = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+					local component = Reflector.reflectUserdataFrom(L, 2)
+
+					Reflector.reflectInto(L, instance * component)
+
+					return 1
+				end,
+				__div = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+					local component = Reflector.reflectUserdataFrom(L, 2)
+
+					Reflector.reflectInto(L, instance / component)
+
+					return 1
+				end,
+				__idiv = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+					local component = Reflector.reflectUserdataFrom(L, 2)
+
+					Reflector.reflectInto(L, instance // component)
+
+					return 1
+				end,
+				__mod = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+					local component = Reflector.reflectUserdataFrom(L, 2)
+
+					Reflector.reflectInto(L, instance % component)
+
+					return 1
+				end,
+				__pow = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+					local component = Reflector.reflectUserdataFrom(L, 2)
+
+					Reflector.reflectInto(L, instance ^ component)
+
+					return 1
+				end,
+				__le = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+					local component = Reflector.reflectUserdataFrom(L, 2)
+
+					Reflector.reflectInto(L, instance <= component)
+
+					return 1
+				end,
+				__len = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+
+					Reflector.reflectInto(L, #instance)
+
+					return 1
+				end,
+				__iter = function(L)
+					local instance = Reflector.reflectUserdataFrom(L, 1)
+					local iterator, state, initial = pairs(instance)
+
+					Reflector.reflectInto(L, iterator)
+					Reflector.reflectInto(L, state)
+					Reflector.reflectInto(L, initial)
+
+					return 3
 				end,
 			} :: { [string]: (...any) -> number }
 		do
