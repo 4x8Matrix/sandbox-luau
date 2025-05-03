@@ -14,6 +14,6 @@ Sandbox:LoadEnvironment("Roblox")
 Sandbox:Eval([[
 -- setfenv(0, {})
 
-print("hi", e)
-print(getfenv())
+-- print("hi", e)
+a = game.e
 ]])

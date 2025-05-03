@@ -1,12 +1,13 @@
 --[[
-	
+	Closures: implements a luau library for closure related functionality.
 ]]
 
 local Luau = require("../modules/Luau")
 local Wasm = require("../modules/Wasm")
 
 --[[
-	
+	Enables developers to create `c closures` from luau functions, mostly used to trick code into believing
+	something was written from C
 ]]
 local function cClosure(L0)
 	Luau.lua_pushcclosure(

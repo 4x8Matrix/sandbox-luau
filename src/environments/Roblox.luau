@@ -12,8 +12,10 @@ return function(sandbox)
 	sandbox:LoadLibrary("async")
 	sandbox:LoadLibrary("glob")
 	sandbox:LoadLibrary("closures")
+	sandbox:LoadLibrary("runtime")
 
 	Scheduler.init(sandbox.L)
+	Reflector.init(sandbox.L)
 
 	Luau.lua_pushcfunction(
 		sandbox.L,
@@ -46,6 +48,7 @@ return function(sandbox)
 	Reflector.reflectUserdataInto(sandbox.L, workspace)
 	Luau.lua_setglobal(sandbox.L, Wasm.cstr("workspace"))
 
+	sandbox:LoadBlob("roblox_pp")
 	sandbox:LoadBlob("roblox_task")
 	sandbox:LoadBlob("roblox_env")
 

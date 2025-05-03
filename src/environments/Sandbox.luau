@@ -11,7 +11,7 @@ return function(sandbox)
 
 	Scheduler.init(sandbox.L)
 
-	sandbox:LoadBlob("pp")
+	sandbox:LoadBlob("standard_pp")
 
 	sandbox:AddToScheduler(function()
 		Scheduler.schedule(sandbox.L)

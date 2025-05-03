@@ -34,10 +34,10 @@ end
 function library.cfn(source: (...any) -> Pointer)
 	local pointer = #LuauCeption.wasm.indirect_function_table.data + 1
 
-	LuauCeption.wasm.indirect_function_table.data[pointer] = function(L)
-		local status, result = pcall(function()
-			return source(L)
-		end)
+	LuauCeption.wasm.indirect_function_table.data[pointer] = function(L, ...)
+		local status, result = pcall(function(...)
+			return source(L, ...)
+		end, ...)
 
 		assert(type(result) == "number", "Return value must be a number")
 

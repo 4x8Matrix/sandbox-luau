@@ -1,12 +1,14 @@
 --[[
-	
+	Glob: implements a library for messing around with the runtimes global things, for instance:
+		- Allows mutation of the environment
+		- Allows setting global variables
 ]]
 
 local Luau = require("../modules/Luau")
 local Wasm = require("../modules/Wasm")
 
 --[[
-	
+	Will globally set a variable
 ]]
 local function set(L)
 	local value = Luau.luaL_checkstring(L, -2)
@@ -18,7 +20,7 @@ local function set(L)
 end
 
 --[[
-	
+	Will set the environment of any future evaluations.
 ]]
 local function environment(L)
 	Luau.luaL_checktype(L, -1, Luau.LUA_TTABLE)

@@ -1,9 +1,10 @@
 --[[
-	Env: 
+	Roblox Env: responsible for implementing the same environment as the Roblox runtime.
 ]]
 
 return [[
 local startTime = os.clock()
+local registry = runtime.registry()
 
 glob.set("ypcall", closures.cClosure(pcall))
 glob.set("wait", closures.cClosure(task.wait))
@@ -38,5 +39,6 @@ glob.environment(setmetatable({
 }, { __index = _G, __metatable = "The metatable is locked" }))
 
 glob.set("closures", nil)
+glob.set("runtime", nil)
 glob.set("glob", nil)
 ]]
