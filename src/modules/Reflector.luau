@@ -236,13 +236,11 @@ function Reflector.init(L: Luau.LuaState)
 						local response = table.pack(method(instance, table.unpack(arguments)))
 						local responseCount = table.maxn(response)
 
-						task.delay(1, function()
-							for index = 1, responseCount do
-								Reflector.reflectInto(L, response[index])
-							end
+						for index = 1, responseCount do
+							Reflector.reflectInto(L, response[index])
+						end
 
-							Scheduler.pushBack(L, thread, responseCount)
-						end)
+						Scheduler.pushBack(L, thread, responseCount)
 					end)
 
 					return Luau.lua_yield(L, Luau.LUA_MULTRET)
