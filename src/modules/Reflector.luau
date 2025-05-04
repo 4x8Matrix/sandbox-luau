@@ -147,7 +147,9 @@ function Reflector.reflectInto(L: Luau.LuaState, object: any): ()
 							Reflector.reflectInto(L, response[index])
 						end
 
-						Scheduler.pushBack(L, thread, responseCount)
+						Scheduler.pushFront(coroutine.create(function()
+							Luau.lua_resume(thread, L, responseCount)
+						end))
 					else
 						print(`Runtime Error: {response[2]}`)
 					end
@@ -206,7 +208,7 @@ function Reflector.reflectFrom(L: Luau.LuaState, index: number): any
 				Reflector.reflectInto(thread, select(i, ...))
 			end
 
-			Scheduler.resume(L, thread, argCount)
+			Luau.lua_resume(L, thread, argCount)
 		end
 	elseif valueType == "userdata" then
 		return Reflector.reflectUserdataFrom(L, index)
@@ -263,7 +265,9 @@ function Reflector.init(L: Luau.LuaState)
 							Reflector.reflectInto(L, response[index])
 						end
 
-						Scheduler.pushBack(L, thread, responseCount)
+						Scheduler.pushBack(coroutine.create(function()
+							Luau.lua_resume(thread, L, responseCount)
+						end))
 					end)
 
 					return Luau.lua_yield(L, Luau.LUA_MULTRET)

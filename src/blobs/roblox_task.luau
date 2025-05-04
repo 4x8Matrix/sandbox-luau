@@ -36,7 +36,11 @@ function task.delay(timeToDelay, f, ...)
 	local clock = os.clock()
 
 	local co = coroutine.create(function(...)
-		while os.clock() - clock < timeToDelay do
+		if timeToDelay and timeToDelay > 0 then
+			while os.clock() - clock < timeToDelay do
+				async.await()
+			end
+		else
 			async.await()
 		end
 
@@ -57,7 +61,11 @@ end
 function task.wait(timeToDelay)
 	local clock = os.clock()
 
-	while os.clock() - clock < (timeToDelay or 0) do
+	if timeToDelay and timeToDelay > 0 then
+		while os.clock() - clock < timeToDelay do
+			async.await()
+		end
+	else
 		async.await()
 	end
 

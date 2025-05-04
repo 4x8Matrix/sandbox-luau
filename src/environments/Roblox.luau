@@ -14,7 +14,7 @@ return function(sandbox)
 	sandbox:LoadLibrary("closures")
 	sandbox:LoadLibrary("runtime")
 
-	Scheduler.init(sandbox.L)
+	Scheduler.init()
 	Reflector.init(sandbox.L)
 
 	Luau.lua_pushcfunction(
@@ -53,6 +53,6 @@ return function(sandbox)
 	sandbox:LoadBlob("roblox_env")
 
 	sandbox:AddToScheduler(function()
-		Scheduler.schedule(sandbox.L)
+		Scheduler.schedule()
 	end)
 end

@@ -9,11 +9,11 @@ return function(sandbox)
 	sandbox:LoadLibrary("async")
 	sandbox:LoadLibrary("glob")
 
-	Scheduler.init(sandbox.L)
+	Scheduler.init()
 
 	sandbox:LoadBlob("standard_pp")
 
 	sandbox:AddToScheduler(function()
-		Scheduler.schedule(sandbox.L)
+		Scheduler.schedule()
 	end)
 end

@@ -1,176 +1,89 @@
 --[[
-	Welcome to the Scheduler! This module is primarily responsible for the asynchronous execution of threads.
+	Welcome to the scheduler! This module is responsible for handling the concurrency embedded into the
+	sandboxes runtime.
+
+	This scheduler uses a double ended queue to be able to define two sorts of behaviours: 
+		1. Defferred threads, these are threads that will be resumed at the end of the current exeuction cycle.
+		2. Awaiting threads, these are threads that will be resumed at the start of the current exeuction cycle.
 ]]
 
-local Luau = require("../modules/Luau")
-local Wasm = require("../modules/Wasm")
-
-local ACTIVE_THREAD_DEQUEUE = Wasm.cstr("ACTIVE_THREAD_DEQUEUE")
-local INACTIVE_THREAD_DEQUEUE = Wasm.cstr("INACTIVE_THREAD_DEQUEUE")
+local schedulerDequeue: Dequeue
+local dequeueSize: number
 
 local Scheduler = {}
 
 --[[
-	Enqueues a thread to be run at the front of the queue.
+	Will push a thread to the start of the dequeue.
 ]]
-function Scheduler.pushFront(L: Luau.LuaState, thread: Luau.LuaThread, argCount: number?): ()
-	Luau.lua_getfield(L, Luau.LUA_REGISTRYINDEX, INACTIVE_THREAD_DEQUEUE) -- +1: dequeue
+function Scheduler.pushFront(thread: thread): ()
+	schedulerDequeue.first -= 1
+	schedulerDequeue.queue[schedulerDequeue.first] = thread
 
-	Luau.lua_getfield(L, -1, Wasm.cstr("first"))
-	local first = Luau.lua_tonumberx(L, -1)
-	Luau.lua_pop(L, 1)
-
-	Luau.lua_pushinteger(L, first - 1)
-	Luau.lua_setfield(L, -2, Wasm.cstr("first"))
-
-	print("SET:", first - 1)
-
-	Luau.lua_pushinteger(L, first - 1)
-	Luau.lua_newtable(L)
-
-	Luau.lua_pushthread(L, thread)
-	Luau.lua_setfield(L, -2, Wasm.cstr("thread"))
-
-	Luau.lua_newtable(L)
-	for i = 1, argCount or 0 do
-		Luau.lua_pushvalue(L, -(3 + i))
-		Luau.lua_rawseti(L, -2, i)
-	end
-	Luau.lua_setfield(L, -2, Wasm.cstr("args"))
-
-	Luau.lua_settable(L, -3)
-
-	Luau.lua_pop(L, 1) -- pop dequeue
+	dequeueSize += 1
 end
 
 --[[
-	Enqueues a thread to be run at the back of the queue.
+	Will push a thread to the end of the dequeue.
 ]]
-function Scheduler.pushBack(L: Luau.LuaState, thread: Luau.LuaThread, argCount: number?): ()
-	Luau.lua_getfield(L, Luau.LUA_REGISTRYINDEX, INACTIVE_THREAD_DEQUEUE) -- +1: dequeue
+function Scheduler.pushBack(thread: thread): ()
+	schedulerDequeue.last += 1
+	schedulerDequeue.queue[schedulerDequeue.last] = thread
 
-	Luau.lua_getfield(L, -1, Wasm.cstr("last"))
-	local last = Luau.lua_tonumberx(L, -1)
-	Luau.lua_pop(L, 1)
-
-	Luau.lua_pushinteger(L, last + 1)
-	Luau.lua_setfield(L, -2, Wasm.cstr("last"))
-
-	Luau.lua_pushinteger(L, last + 1)
-	Luau.lua_newtable(L)
-
-	Luau.lua_pushthread(L, thread)
-	Luau.lua_setfield(L, -2, Wasm.cstr("thread"))
-
-	Luau.lua_newtable(L)
-	for i = 1, argCount or 0 do
-		Luau.lua_pushvalue(L, -(3 + i))
-		Luau.lua_rawseti(L, -2, i)
-	end
-	Luau.lua_setfield(L, -2, Wasm.cstr("args"))
-
-	Luau.lua_settable(L, -3)
-
-	Luau.lua_pop(L, 1) -- pop dequeue
+	dequeueSize += 1
 end
 
 --[[
-	Will resume a thread.
+	Core scheduler loop that runs through all scheduled threads, and resumes them.
 ]]
-function Scheduler.resume(L: Luau.LuaState, thread: Luau.LuaThread, argCount: number?): ()
-	local status = Luau.lua_resume(thread, L, argCount or 0)
+function Scheduler.schedule(): ()
+	-- we don't want a catch-22 situation where our queue/first/last are ever growing because the thread we resumed then
+	-- decided to throw itself back into the queue. So to avoid this, the queue is reset & we store a version of said queue
+	-- here.
+	local dequeue = schedulerDequeue
 
-	if status == Luau.LUA_YIELD then
-		Scheduler.pushBack(L, thread)
-	elseif status ~= Luau.LUA_OK then
-		if status == Luau.LUA_ERRRUN then
-			print(`Runtime error: {Wasm.luastr(Luau.lua_tostring(thread, -1))}`)
+	if dequeueSize == 0 then
+		return
+	end
 
-			Luau.lua_pop(L, 1)
-		elseif status == Luau.LUA_ERRMEM then
-			print(`Memory error!`)
-		elseif status == Luau.LUA_ERRSYNTAX then
-			print(`Syntax error!`)
+	Scheduler.reset()
+
+	while dequeue.first <= dequeue.last do
+		local thread = dequeue.queue[dequeue.first]
+		local success, response = coroutine.resume(thread)
+
+		dequeue.first += 1
+
+		if not success then
+			print(`Runtime Error: {response}`)
+			print(debug.traceback(thread))
 		end
 	end
 end
 
 --[[
-	Core scheduler loop.
+	Responsible for resetting scheduler state.
 ]]
-function Scheduler.schedule(L: Luau.LuaState): ()
-	Luau.lua_getfield(L, Luau.LUA_REGISTRYINDEX, INACTIVE_THREAD_DEQUEUE)
-	Luau.lua_setfield(L, Luau.LUA_REGISTRYINDEX, ACTIVE_THREAD_DEQUEUE)
-	Scheduler.reset(L, INACTIVE_THREAD_DEQUEUE)
-
-	Luau.lua_getfield(L, Luau.LUA_REGISTRYINDEX, ACTIVE_THREAD_DEQUEUE) -- +1: queue
-
-	Luau.lua_getfield(L, -1, Wasm.cstr("first")) -- +1: first
-	local dQueueFirst = Luau.lua_tonumberx(L, -1)
-
-	Luau.lua_getfield(L, -2, Wasm.cstr("last")) -- +1: last
-	local dQueueLast = Luau.lua_tonumberx(L, -1)
-
-	Luau.lua_pop(L, 2) -- pop first, last
-
-	while dQueueFirst <= dQueueLast do
-		Luau.lua_pushinteger(L, dQueueFirst + 1)
-		Luau.lua_setfield(L, -2, Wasm.cstr("first"))
-
-		Luau.lua_pushinteger(L, dQueueFirst)
-		Luau.lua_gettable(L, -2) -- +1: table
-
-		Luau.lua_getfield(L, -1, Wasm.cstr("thread")) -- +1 thread
-
-		local thread = Luau.lua_tothread(L, -1)
-		Luau.lua_pop(L, 1) -- pop thread
-
-		-- sometimes the thread is just not valid.
-		if Luau.lua_status(thread) == Luau.LUA_YIELD then
-			Luau.lua_getfield(L, -1, Wasm.cstr("args")) -- +1 args
-
-			local argCount = Luau.lua_objlen(L, -1)
-
-			for i = 1, argCount do
-				Luau.lua_rawgeti(L, -1, i)
-			end
-
-			Scheduler.resume(L, thread, argCount)
-		end
-
-		Luau.lua_pop(L, Luau.lua_gettop(L) - 1)
-
-		Luau.lua_getfield(L, -1, Wasm.cstr("first")) -- +1: first
-		dQueueFirst = Luau.lua_tonumberx(L, -1)
-
-		Luau.lua_getfield(L, -2, Wasm.cstr("last")) -- +1: last
-		dQueueLast = Luau.lua_tonumberx(L, -1)
-
-		Luau.lua_pop(L, 2) -- pop first, last
-	end
+function Scheduler.reset(): ()
+	dequeueSize = 0
+	schedulerDequeue = {
+		first = 0,
+		last = -1,
+		queue = {},
+	}
 end
 
 --[[
-	Will reset a dequeue back to it's default state.
+	Will initialise scheduler variables.
 ]]
-function Scheduler.reset(L: Luau.LuaState, queue: Wasm.Pointer): ()
-	Luau.lua_newtable(L)
-
-	Luau.lua_pushinteger(L, 0)
-	Luau.lua_setfield(L, -2, Wasm.cstr("first"))
-
-	Luau.lua_pushinteger(L, -1)
-	Luau.lua_setfield(L, -2, Wasm.cstr("last"))
-
-	Luau.lua_setfield(L, Luau.LUA_REGISTRYINDEX, queue)
+function Scheduler.init(): ()
+	Scheduler.reset()
 end
 
---[[
-	Will initialise the dequeues for this lua state.
-]]
-function Scheduler.init(L: Luau.LuaState): ()
-	Scheduler.reset(L, ACTIVE_THREAD_DEQUEUE)
-	Scheduler.reset(L, INACTIVE_THREAD_DEQUEUE)
-end
+type Queue = { thread }
+type Dequeue = {
+	first: number,
+	last: number,
+	queue: Queue,
+}
 
 return Scheduler

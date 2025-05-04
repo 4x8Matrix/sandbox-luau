@@ -5,15 +5,16 @@ local SandboxLuau = require("./src")
 local Sandbox = SandboxLuau.new()
 
 task.spawn(function()
-	while task.wait(0) do
+	while task.wait(0.5) do
 		Sandbox:Schedule()
 	end
 end)
 
-Sandbox:LoadEnvironment("Roblox")
+Sandbox:LoadEnvironment("Sandbox")
 Sandbox:Eval([[
--- setfenv(0, {})
+while true do
+	async.defer()
 
--- print("hi", e)
-a = game.e
+	print("e")
+end
 ]])

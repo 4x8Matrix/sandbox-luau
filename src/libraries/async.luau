@@ -14,7 +14,9 @@ local function defer(L)
 	local thread = Luau.lua_tothread(L, -1)
 	Luau.lua_pop(L, 1) -- pop thread
 
-	Scheduler.pushFront(L, thread)
+	Scheduler.pushFront(coroutine.create(function()
+		Luau.lua_resume(thread, L, 0)
+	end))
 
 	return Luau.lua_yield(L, 0)
 end
@@ -27,7 +29,9 @@ local function await(L)
 	local thread = Luau.lua_tothread(L, -1)
 	Luau.lua_pop(L, 1) -- pop thread
 
-	Scheduler.pushBack(L, thread)
+	Scheduler.pushBack(coroutine.create(function()
+		Luau.lua_resume(thread, L, 0)
+	end))
 
 	return Luau.lua_yield(L, 0)
 end
