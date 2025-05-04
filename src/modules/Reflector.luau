@@ -11,7 +11,8 @@ local Scheduler = require(ReplicatedStorage.Packages.SandboxLuau.modules.Schedul
 local Luau = require("../modules/Luau")
 local Wasm = require("../modules/Wasm")
 
-local USERDATA_METATABLE = Wasm.cstr("UserdatMetatable")
+local FUNCTION_REFS = Wasm.cstr("FunctionRefs")
+local USERDATA_METATABLE = Wasm.cstr("UserdataMetatable")
 local USERDATA_TAG = 1
 
 local Reflector = {}
@@ -133,20 +134,26 @@ function Reflector.reflectInto(L: Luau.LuaState, object: any): ()
 					table.insert(args, Reflector.reflectFrom(L, 1))
 				end
 
-				local results = { pcall(object, table.unpack(args)) }
+				Luau.lua_pushthread(L)
+				local thread = Luau.lua_tothread(L, -1)
+				Luau.lua_pop(L, 1)
 
-				if results[1] then
-					for i = 2, #results do
-						Reflector.reflectInto(L, results[i])
+				task.defer(function()
+					local response = table.pack(pcall(object, table.unpack(args)))
+					local responseCount = table.maxn(response) - 1
+
+					if response[1] then
+						for index = 2, responseCount do
+							Reflector.reflectInto(L, response[index])
+						end
+
+						Scheduler.pushBack(L, thread, responseCount)
+					else
+						print(`Runtime Error: {response[2]}`)
 					end
+				end)
 
-					return #results - 1
-				else
-					Luau.lua_pushstring(L, Wasm.cstr(`Error: {results[2]}`))
-					Luau.lua_error(L)
-
-					return 1
-				end
+				return Luau.lua_yield(L, Luau.LUA_MULTRET)
 			end),
 			debug.info(object, "s")
 		)
@@ -184,9 +191,22 @@ function Reflector.reflectFrom(L: Luau.LuaState, index: number): any
 	elseif valueType == "nil" then
 		return nil
 	elseif valueType == "function" then
-		-- todo: figure out how to implement vm functions -> luau
-		return function()
-			error(`Unable to reflect luau function! (doing this could waste a lot of the VMs memory)`)
+		-- fixme: we don't ever remove this from ref..
+		Luau.lua_pushvalue(L, index)
+		local ref = Luau.lua_ref(L, -1)
+		Luau.lua_pop(L, 1)
+
+		return function(...)
+			local thread = Luau.lua_newthread(L)
+			local argCount = select("#", ...)
+
+			Luau.lua_rawgeti(thread, Luau.LUA_REGISTRYINDEX, ref)
+
+			for i = 1, argCount do
+				Reflector.reflectInto(thread, select(i, ...))
+			end
+
+			Scheduler.resume(L, thread, argCount)
 		end
 	elseif valueType == "userdata" then
 		return Reflector.reflectUserdataFrom(L, index)
@@ -212,6 +232,9 @@ function Reflector.init(L: Luau.LuaState)
 			return 0
 		end)
 	)
+
+	Luau.lua_newtable(L)
+	Luau.lua_setfield(L, Luau.LUA_REGISTRYINDEX, FUNCTION_REFS)
 
 	if Luau.luaL_newmetatable(L, USERDATA_METATABLE) == 1 then
 		for metamethod, callback in

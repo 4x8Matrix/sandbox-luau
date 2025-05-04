@@ -23,6 +23,8 @@ function Scheduler.pushFront(L: Luau.LuaState, thread: Luau.LuaThread, argCount:
 	Luau.lua_pushinteger(L, first - 1)
 	Luau.lua_setfield(L, -2, Wasm.cstr("first"))
 
+	print("SET:", first - 1)
+
 	Luau.lua_pushinteger(L, first - 1)
 	Luau.lua_newtable(L)
 
@@ -73,6 +75,27 @@ function Scheduler.pushBack(L: Luau.LuaState, thread: Luau.LuaThread, argCount: 
 end
 
 --[[
+	Will resume a thread.
+]]
+function Scheduler.resume(L: Luau.LuaState, thread: Luau.LuaThread, argCount: number?): ()
+	local status = Luau.lua_resume(thread, L, argCount or 0)
+
+	if status == Luau.LUA_YIELD then
+		Scheduler.pushBack(L, thread)
+	elseif status ~= Luau.LUA_OK then
+		if status == Luau.LUA_ERRRUN then
+			print(`Runtime error: {Wasm.luastr(Luau.lua_tostring(thread, -1))}`)
+
+			Luau.lua_pop(L, 1)
+		elseif status == Luau.LUA_ERRMEM then
+			print(`Memory error!`)
+		elseif status == Luau.LUA_ERRSYNTAX then
+			print(`Syntax error!`)
+		end
+	end
+end
+
+--[[
 	Core scheduler loop.
 ]]
 function Scheduler.schedule(L: Luau.LuaState): ()
@@ -112,21 +135,7 @@ function Scheduler.schedule(L: Luau.LuaState): ()
 				Luau.lua_rawgeti(L, -1, i)
 			end
 
-			local status = Luau.lua_resume(thread, L, argCount)
-
-			if status == Luau.LUA_YIELD then
-				Scheduler.pushBack(L, thread)
-			elseif status ~= Luau.LUA_OK then
-				if status == Luau.LUA_ERRRUN then
-					print(`Runtime error: {Wasm.luastr(Luau.lua_tostring(thread, -1))}`)
-
-					Luau.lua_pop(L, 1)
-				elseif status == Luau.LUA_ERRMEM then
-					print(`Memory error!`)
-				elseif status == Luau.LUA_ERRSYNTAX then
-					print(`Syntax error!`)
-				end
-			end
+			Scheduler.resume(L, thread, argCount)
 		end
 
 		Luau.lua_pop(L, Luau.lua_gettop(L) - 1)
