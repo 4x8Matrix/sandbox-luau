@@ -214,6 +214,10 @@ function SandboxLuau.Prototype.Compile(
 	Wasm.rt.store.i32(Wasm.memory, compileOptionsPtr + 24, 0)
 	Wasm.rt.store.i32(Wasm.memory, compileOptionsPtr + 28, 0)
 	Wasm.rt.store.i32(Wasm.memory, compileOptionsPtr + 32, 0)
+	Wasm.rt.store.i32(Wasm.memory, compileOptionsPtr + 36, 0)
+	Wasm.rt.store.i32(Wasm.memory, compileOptionsPtr + 40, 0)
+	Wasm.rt.store.i32(Wasm.memory, compileOptionsPtr + 44, 0)
+	Wasm.rt.store.i32(Wasm.memory, compileOptionsPtr + 48, 0)
 
 	local bytecodeSizePtr = Luau.malloc(8)
 	local bytecodePtr = Luau.luau_compile(Wasm.cstr(code), #code, compileOptionsPtr, bytecodeSizePtr)

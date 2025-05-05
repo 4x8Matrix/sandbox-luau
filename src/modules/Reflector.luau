@@ -139,7 +139,7 @@ function Reflector.reflectInto(L: Luau.LuaState, object: any): ()
 				local thread = Luau.lua_tothread(L, -1)
 				Luau.lua_pop(L, 1)
 
-				task.defer(function()
+				Scheduler.pushFront(coroutine.create(function()
 					local response = table.pack(pcall(object, table.unpack(args)))
 					local responseCount = table.maxn(response) - 1
 
@@ -148,19 +148,17 @@ function Reflector.reflectInto(L: Luau.LuaState, object: any): ()
 							Reflector.reflectInto(thread, response[index])
 						end
 
-						Scheduler.pushFront(coroutine.create(function()
-							resumeWithErrorHandling(thread, 0, responseCount)
-						end))
+						resumeWithErrorHandling(thread, 0, responseCount)
 					else
 						print(`Runtime Error: {response[2]}`)
 					end
-				end)
+				end))
 
 				return Luau.lua_yield(L, Luau.LUA_MULTRET)
 			end),
-			debug.info(object, "s")
+			Wasm.cstr(debug.info(object, "s"))
 		)
-	elseif valueType == "userdata" then
+	elseif valueType == "userdata" or valueType == "vector" then
 		Reflector.reflectUserdataInto(L, object)
 	elseif valueType == "thread" then
 		error("Can't reflect threads!")
@@ -211,7 +209,7 @@ function Reflector.reflectFrom(L: Luau.LuaState, index: number): any
 
 			resumeWithErrorHandling(thread, 0, argCount)
 		end
-	elseif valueType == "userdata" then
+	elseif valueType == "userdata" or valueType == "vector" then
 		return Reflector.reflectUserdataFrom(L, index)
 	elseif valueType == "thread" then
 		error("Can't reflect threads!")
@@ -240,8 +238,9 @@ function Reflector.init(L: Luau.LuaState)
 	Luau.lua_setfield(L, Luau.LUA_REGISTRYINDEX, FUNCTION_REFS)
 
 	if Luau.luaL_newmetatable(L, USERDATA_METATABLE) == 1 then
-		for metamethod, callback in
+		for metamethod, object in
 			{
+				__metatable = "The metatable is locked",
 				__namecall = function(L)
 					local instance = Reflector.reflectUserdataFrom(L, 1)
 					local methodName = Wasm.luastr(Luau.lua_namecallatom(L, 0))
@@ -281,7 +280,9 @@ function Reflector.init(L: Luau.LuaState)
 				__newindex = function(L)
 					local instance = Reflector.reflectUserdataFrom(L, -3)
 					local index = Wasm.luastr(Luau.lua_tostring(L, -2))
-					local value = Reflector.reflectFrom(L, -3)
+					local value = Reflector.reflectFrom(L, -1)
+
+					print(instance, index, value)
 
 					instance[index] = value
 
@@ -312,7 +313,7 @@ function Reflector.init(L: Luau.LuaState)
 				__tostring = function(L)
 					local instance = Reflector.reflectUserdataFrom(L, 1)
 
-					Reflector.reflectInto(L, Wasm.cstr(instance.Name))
+					Reflector.reflectInto(L, Wasm.cstr(tostring(instance)))
 
 					return 1
 				end,
@@ -420,9 +421,18 @@ function Reflector.init(L: Luau.LuaState)
 
 					return 3
 				end,
-			} :: { [string]: (...any) -> number }
+			} :: { [string]: any }
 		do
-			Luau.lua_pushcfunction(L, Wasm.cfn(callback), 0)
+			local objectType = type(object)
+
+			if objectType == "function" then
+				Luau.lua_pushcfunction(L, Wasm.cfn(object), 0)
+			elseif objectType == "string" then
+				Luau.lua_pushstring(L, Wasm.cstr(object))
+			else
+				error(`Unknown type: {objectType}`)
+			end
+
 			Luau.lua_setfield(L, -2, Wasm.cstr(metamethod))
 		end
 	end

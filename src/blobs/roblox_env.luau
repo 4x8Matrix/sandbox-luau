@@ -30,7 +30,7 @@ glob.set("DebuggerManager", closures.cClosure(function()
 end))
 
 glob.set("warn", closures.cClosure(function(...)
-	print("WARN:", ...)
+	warn(...)
 end))
 
 glob.environment(setmetatable({

@@ -17,36 +17,87 @@ return function(sandbox)
 	Scheduler.init()
 	Reflector.init(sandbox.L)
 
-	Luau.lua_pushcfunction(
-		sandbox.L,
-		Wasm.cfn(function(L)
-			Reflector.reflectUserdataInto(L, UserSettings())
+	do -- userdatas
+		Luau.lua_pushcfunction(
+			sandbox.L,
+			Wasm.cfn(function(L)
+				Reflector.reflectUserdataInto(L, UserSettings())
 
-			return 1
-		end),
-		Wasm.cstr("")
-	)
-	Luau.lua_setglobal(sandbox.L, Wasm.cstr("UserSettings"))
+				return 1
+			end),
+			Wasm.cstr("")
+		)
+		Luau.lua_setglobal(sandbox.L, Wasm.cstr("UserSettings"))
 
-	Luau.lua_pushcfunction(
-		sandbox.L,
-		Wasm.cfn(function(L)
-			Reflector.reflectUserdataInto(L, settings())
+		Luau.lua_pushcfunction(
+			sandbox.L,
+			Wasm.cfn(function(L)
+				Reflector.reflectUserdataInto(L, settings())
 
-			return 1
-		end),
-		Wasm.cstr("")
-	)
-	Luau.lua_setglobal(sandbox.L, Wasm.cstr("settings"))
+				return 1
+			end),
+			Wasm.cstr("")
+		)
+		Luau.lua_setglobal(sandbox.L, Wasm.cstr("settings"))
 
-	Reflector.reflectUserdataInto(sandbox.L, script)
-	Luau.lua_setglobal(sandbox.L, Wasm.cstr("script"))
+		for index, value in
+			{
+				game = game,
+				workspace = workspace,
+				script = script,
+			} :: { [string]: any }
+		do
+			Reflector.reflectUserdataInto(sandbox.L, value)
+			Luau.lua_setglobal(sandbox.L, Wasm.cstr(index))
+		end
+	end
 
-	Reflector.reflectUserdataInto(sandbox.L, game)
-	Luau.lua_setglobal(sandbox.L, Wasm.cstr("game"))
-
-	Reflector.reflectUserdataInto(sandbox.L, workspace)
-	Luau.lua_setglobal(sandbox.L, Wasm.cstr("workspace"))
+	do -- datatypes
+		for index, value in
+			{
+				Vector3 = Vector3,
+				Vector2 = Vector2,
+				Vector3int16 = Vector3int16,
+				Vector2int16 = Vector2int16,
+				CFrame = CFrame,
+				Color3 = Color3,
+				BrickColor = BrickColor,
+				Ray = Ray,
+				Region3 = Region3,
+				Region3int16 = Region3int16,
+				Instance = Instance,
+				Axes = Axes,
+				Faces = Faces,
+				Enum = Enum,
+				Random = Random,
+				TweenInfo = TweenInfo,
+				UDim = UDim,
+				UDim2 = UDim2,
+				NumberRange = NumberRange,
+				NumberSequence = NumberSequence,
+				NumberSequenceKeypoint = NumberSequenceKeypoint,
+				ColorSequence = ColorSequence,
+				ColorSequenceKeypoint = ColorSequenceKeypoint,
+				RaycastParams = RaycastParams,
+				OverlapParams = OverlapParams,
+				PhysicalProperties = PhysicalProperties,
+				PathWaypoint = PathWaypoint,
+				Path2DControlPoint = Path2DControlPoint,
+				DockWidgetPluginGuiInfo = DockWidgetPluginGuiInfo,
+				CatalogSearchParams = CatalogSearchParams,
+				Content = Content,
+				DateTime = DateTime,
+				FloatCurveKey = FloatCurveKey,
+				Font = Font,
+				Rect = Rect,
+				RotationCurveKey = RotationCurveKey,
+				SharedTable = SharedTable,
+			} :: { [string]: any }
+		do
+			Reflector.reflectInto(sandbox.L, value)
+			Luau.lua_setglobal(sandbox.L, Wasm.cstr(index))
+		end
+	end
 
 	sandbox:LoadBlob("roblox_pp")
 	sandbox:LoadBlob("roblox_task")
