@@ -40,6 +40,24 @@ return function(sandbox)
 		)
 		Luau.lua_setglobal(sandbox.L, Wasm.cstr("settings"))
 
+		Luau.lua_pushcfunction(
+			sandbox.L,
+			Wasm.cfn(function(L)
+				local stack = Luau.lua_gettop(L)
+				local str = ""
+
+				for index = 1, stack do
+					str ..= `{index ~= 1 and " " or ""}{Wasm.luastr(Luau.lua_tostring(L, index))}`
+				end
+
+				warn(str)
+
+				return 0
+			end),
+			Wasm.cstr("")
+		)
+		Luau.lua_setglobal(sandbox.L, Wasm.cstr("warn"))
+
 		for index, value in
 			{
 				game = game,

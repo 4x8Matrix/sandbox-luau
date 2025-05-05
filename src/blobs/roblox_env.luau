@@ -6,12 +6,12 @@ return [[
 local startTime = os.clock()
 local registry = runtime.registry()
 
-glob.set("ypcall", closures.cClosure(pcall))
-glob.set("wait", closures.cClosure(task.wait))
-glob.set("spawn", closures.cClosure(task.spawn))
-glob.set("delay", closures.cClosure(task.delay))
-glob.set("tick", closures.cClosure(os.clock))
-glob.set("time", closures.cClosure(os.clock))
+glob.set("ypcall", pcall)
+glob.set("wait", task.wait)
+glob.set("spawn", task.spawn)
+glob.set("delay", task.delay)
+glob.set("tick", os.clock)
+glob.set("time", os.clock)
 
 glob.set("elapsedTime", closures.cClosure(function()
 	return os.clock() - startTime
@@ -22,15 +22,11 @@ glob.set("ElapsedTime", closures.cClosure(function()
 end))
 
 glob.set("PluginManager", closures.cClosure(function()
-	error("PluginManager is not implemented")
+	-- error("PluginManager is not implemented")
 end))
 
 glob.set("DebuggerManager", closures.cClosure(function()
-	error("DebuggerManager is not implemented")
-end))
-
-glob.set("warn", closures.cClosure(function(...)
-	warn(...)
+	-- error("DebuggerManager is not implemented")
 end))
 
 glob.environment(setmetatable({

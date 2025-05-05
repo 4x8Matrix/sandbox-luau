@@ -39,7 +39,9 @@ function library.cfn(source: (...any) -> Pointer)
 			return source(L, ...)
 		end, ...)
 
-		assert(type(result) == "number", "Return value must be a number")
+		if type(result) ~= "number" then
+			error(`Return value must be a number ({debug.info(source, "s")} - {debug.info(source, "lnaf")})`)
+		end
 
 		if not status then
 			LuauCeption.wasm.cfns.lua_pushstring(L, library.cstr("Error: " .. result))

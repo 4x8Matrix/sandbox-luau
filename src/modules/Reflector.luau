@@ -144,8 +144,8 @@ function Reflector.reflectInto(L: Luau.LuaState, object: any): ()
 					local responseCount = table.maxn(response) - 1
 
 					if response[1] then
-						for index = 2, responseCount do
-							Reflector.reflectInto(thread, response[index])
+						for index = 1, responseCount do
+							Reflector.reflectInto(thread, response[index + 1])
 						end
 
 						resumeWithErrorHandling(thread, 0, responseCount)
@@ -282,8 +282,6 @@ function Reflector.init(L: Luau.LuaState)
 					local index = Wasm.luastr(Luau.lua_tostring(L, -2))
 					local value = Reflector.reflectFrom(L, -1)
 
-					print(instance, index, value)
-
 					instance[index] = value
 
 					return 0
@@ -313,7 +311,7 @@ function Reflector.init(L: Luau.LuaState)
 				__tostring = function(L)
 					local instance = Reflector.reflectUserdataFrom(L, 1)
 
-					Reflector.reflectInto(L, Wasm.cstr(tostring(instance)))
+					Reflector.reflectInto(L, tostring(instance))
 
 					return 1
 				end,

@@ -26,7 +26,7 @@ function resumeWithErrorHandling(thread, from, count, vmTraceback: string?)
 			local errorMessagePtr = Luau.lua_tostring(thread, -1)
 
 			if errorMessagePtr ~= 0 then
-				traceback(thread, errorMessagePtr)
+				-- traceback(thread, errorMessagePtr)
 
 				print(`Runtime error: {Wasm.luastr(Luau.lua_tostring(thread, -1))}\n{vmTraceback}`)
 

@@ -26,6 +26,8 @@ local function cClosure(L0)
 			local total = Luau.lua_gettop(L1)
 			local retCount = total - numArgs
 
+			print(retCount)
+
 			return retCount
 		end),
 		Wasm.cstr(""),
