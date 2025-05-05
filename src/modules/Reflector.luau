@@ -1,4 +1,3 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 --[[
 	Reflector: A module which attempts to dynamically pull/push things to/from the VM, for example:
 		You can reflect a string into the VM, which in turn implements your string in the wasm VM.
@@ -7,9 +6,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	Supports all datatypes bar threads.
 ]]
 
-local Scheduler = require(ReplicatedStorage.Packages.SandboxLuau.modules.Scheduler)
+local Scheduler = require("../modules/Scheduler")
 local Luau = require("../modules/Luau")
 local Wasm = require("../modules/Wasm")
+
+local resumeWithErrorHandling = require("../functions/resumeWithErrorHandling")
 
 local FUNCTION_REFS = Wasm.cstr("FunctionRefs")
 local USERDATA_METATABLE = Wasm.cstr("UserdataMetatable")
@@ -144,11 +145,11 @@ function Reflector.reflectInto(L: Luau.LuaState, object: any): ()
 
 					if response[1] then
 						for index = 2, responseCount do
-							Reflector.reflectInto(L, response[index])
+							Reflector.reflectInto(thread, response[index])
 						end
 
 						Scheduler.pushFront(coroutine.create(function()
-							Luau.lua_resume(thread, L, responseCount)
+							resumeWithErrorHandling(thread, 0, responseCount)
 						end))
 					else
 						print(`Runtime Error: {response[2]}`)
@@ -208,7 +209,7 @@ function Reflector.reflectFrom(L: Luau.LuaState, index: number): any
 				Reflector.reflectInto(thread, select(i, ...))
 			end
 
-			Luau.lua_resume(L, thread, argCount)
+			resumeWithErrorHandling(thread, 0, argCount)
 		end
 	elseif valueType == "userdata" then
 		return Reflector.reflectUserdataFrom(L, index)
@@ -242,7 +243,6 @@ function Reflector.init(L: Luau.LuaState)
 		for metamethod, callback in
 			{
 				__namecall = function(L)
-					--fixme: can't yield!
 					local instance = Reflector.reflectUserdataFrom(L, 1)
 					local methodName = Wasm.luastr(Luau.lua_namecallatom(L, 0))
 
@@ -256,19 +256,17 @@ function Reflector.init(L: Luau.LuaState)
 					local thread = Luau.lua_tothread(L, -1)
 					Luau.lua_pop(L, 1)
 
-					task.defer(function()
+					Scheduler.pushBack(coroutine.create(function()
 						local method = instance[methodName]
 						local response = table.pack(method(instance, table.unpack(arguments)))
 						local responseCount = table.maxn(response)
 
 						for index = 1, responseCount do
-							Reflector.reflectInto(L, response[index])
+							Reflector.reflectInto(thread, response[index])
 						end
 
-						Scheduler.pushBack(coroutine.create(function()
-							Luau.lua_resume(thread, L, responseCount)
-						end))
-					end)
+						resumeWithErrorHandling(thread, 0, responseCount)
+					end))
 
 					return Luau.lua_yield(L, Luau.LUA_MULTRET)
 				end,

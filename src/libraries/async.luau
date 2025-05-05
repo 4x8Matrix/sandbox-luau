@@ -6,6 +6,8 @@ local Luau = require("../modules/Luau")
 local Wasm = require("../modules/Wasm")
 local Scheduler = require("../modules/Scheduler")
 
+local resumeWithErrorHandling = require("../functions/resumeWithErrorHandling")
+
 --[[
 	Defer will yield the current thread until the next execution cycle.
 ]]
@@ -15,7 +17,7 @@ local function defer(L)
 	Luau.lua_pop(L, 1) -- pop thread
 
 	Scheduler.pushFront(coroutine.create(function()
-		Luau.lua_resume(thread, L, 0)
+		resumeWithErrorHandling(thread, 0, 0)
 	end))
 
 	return Luau.lua_yield(L, 0)
@@ -30,7 +32,7 @@ local function await(L)
 	Luau.lua_pop(L, 1) -- pop thread
 
 	Scheduler.pushBack(coroutine.create(function()
-		Luau.lua_resume(thread, L, 0)
+		resumeWithErrorHandling(thread, 0, 0)
 	end))
 
 	return Luau.lua_yield(L, 0)

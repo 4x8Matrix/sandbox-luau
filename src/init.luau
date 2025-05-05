@@ -22,6 +22,9 @@
 
 local Luau = require("./modules/Luau")
 local Wasm = require("./modules/Wasm")
+local Reflector = require("./modules/Reflector")
+
+local resumeWithErrorHandling = require("./functions/resumeWithErrorHandling")
 
 local require = require :: any
 
@@ -246,13 +249,13 @@ function SandboxLuau.Prototype.Eval(
 		)
 	end
 
-	local co = Luau.lua_newthread(self.L)
+	local thread = Luau.lua_newthread(self.L)
 	Luau.lua_pop(self.L, 1)
 
 	local namePtr = Wasm.cstr(settings and settings.chunkName or "SandboxChunk")
 	local bytecodePtr, bytecodeSize = self:Compile(code, settings)
 
-	local result = Luau.luau_load(co, namePtr, bytecodePtr, bytecodeSize, 0)
+	local result = Luau.luau_load(thread, namePtr, bytecodePtr, bytecodeSize, 0)
 
 	Luau.free(bytecodePtr)
 	Luau.free(namePtr)
@@ -263,24 +266,18 @@ function SandboxLuau.Prototype.Eval(
 		return
 	end
 
-	Luau.lua_getfield(co, Luau.LUA_REGISTRYINDEX, Wasm.cstr("__ENV")) -- +1: env
+	Luau.lua_getfield(thread, Luau.LUA_REGISTRYINDEX, Wasm.cstr("__ENV")) -- +1: env
 
-	if Luau.lua_istable(co, -1) == 1 then
-		Luau.lua_pushvalue(co, -1)
-		Luau.lua_setfenv(co, -3)
+	if Luau.lua_istable(thread, -1) == 1 then
+		Luau.lua_pushvalue(thread, -1)
+		Luau.lua_setfenv(thread, -3)
 	end
 
-	Luau.lua_pop(co, 1) -- pop env
+	Luau.lua_pop(thread, 1) -- pop env
 
-	local status = Luau.lua_resume(co, self.L, 0)
+	resumeWithErrorHandling(thread, self.L, 0)
 
-	if status ~= Luau.LUA_OK and status ~= Luau.LUA_YIELD then
-		local err = Wasm.luastr(Luau.lua_tostring(co, -1))
-
-		print(`Runtime error: {err}`)
-	end
-
-	return 0
+	return Reflector.reflectFrom(thread, -1)
 end
 
 --[=[
