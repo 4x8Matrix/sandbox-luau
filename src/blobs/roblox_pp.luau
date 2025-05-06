@@ -111,7 +111,7 @@ local function prettyPrint(...)
 end
 
 local oldPrint = print
-print = function(...)
+print = closures.cClosure(function(...)
     oldPrint(prettyPrint(...))
-end
+end)
 ]]

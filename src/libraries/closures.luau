@@ -35,24 +35,12 @@ local function cClosure(L0)
 	return 1
 end
 
---[[
-	Will clone the function that is at the given positon on the stack
-]]
-local function cloneFunction(L)
-	Luau.luaL_checktype(L, -1, Luau.LUA_TFUNCTION)
-
-	Luau.lua_clonefunction(L, -1)
-
-	return 1
-end
-
 return function(sandbox)
 	Luau.lua_newtable(sandbox.L)
 
 	for name, callback in
 		{
 			cClosure = cClosure,
-			cloneFunction = cloneFunction,
 		} :: { [string]: any }
 	do
 		Luau.lua_pushcfunction(sandbox.L, Wasm.cfn(callback), Wasm.cstr(name))
