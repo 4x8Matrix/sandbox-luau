@@ -6,6 +6,7 @@ local Luau = require("../modules/Luau")
 local Wasm = require("../modules/Wasm")
 local Scheduler = require("../modules/Scheduler")
 local Reflector = require("../modules/Reflector")
+local Cache = require("../modules/Cache")
 
 return function(sandbox)
 	sandbox:LoadEnvironment("Luau")
@@ -15,6 +16,7 @@ return function(sandbox)
 	sandbox:LoadLibrary("runtime")
 
 	Scheduler.init()
+	Cache.init(sandbox.L)
 	Reflector.init(sandbox.L)
 
 	do -- userdatas

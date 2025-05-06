@@ -9,10 +9,12 @@ local async = async
 task = {}
 
 local function resume(co, ...)
-	local success, result = coroutine.resume(co, ...)
+	local object = { coroutine.resume(co, ...) }
+
+	local success = table.remove(object, 1)
 
 	if not success then
-		print(`Error: {tostring(result)}`)
+		print(`Coroutine Error:`, object)
 	end
 end
 

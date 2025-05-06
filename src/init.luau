@@ -26,6 +26,8 @@ local Reflector = require("./modules/Reflector")
 
 local resumeWithErrorHandling = require("./functions/resumeWithErrorHandling")
 
+local MAX_ITERATION_COUNT_VM = 5000
+
 local require = require :: any
 
 local SandboxLuau = {}
@@ -296,6 +298,35 @@ function SandboxLuau.Interface.new(): Sandbox
 	self.L = Luau.luaL_newstate(void, void)
 	self.Environments = {}
 	self.Scheduled = {}
+
+	local callbacksStructPtr = Luau.lua_callbacks(self.L)
+	local iterationCount = 0
+
+	Wasm.rt.store.i32(
+		Wasm.memory,
+		callbacksStructPtr + 4,
+		Wasm.cfn(function(): number
+			iterationCount += 1
+
+			if iterationCount > MAX_ITERATION_COUNT_VM then
+				task.wait()
+
+				iterationCount = 0
+			end
+
+			return 0
+		end)
+	)
+
+	Wasm.rt.store.i32(
+		Wasm.memory,
+		callbacksStructPtr + 8,
+		Wasm.cfn(function(_, errCode): number
+			print(`Luau panic: {errCode}`)
+
+			return 0
+		end)
+	)
 
 	return self
 end

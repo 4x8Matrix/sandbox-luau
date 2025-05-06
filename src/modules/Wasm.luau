@@ -5,9 +5,9 @@
 
 local LuauCeption = require("../vendor/LuauCeption")
 
-local library = setmetatable({}, { __index = LuauCeption.wasm })
-
 local strings = {}
+
+local library = setmetatable({}, { __index = LuauCeption.wasm })
 
 function library.cstr(source: string): Pointer
 	if strings[source] then

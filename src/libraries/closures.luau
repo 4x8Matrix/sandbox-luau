@@ -26,13 +26,22 @@ local function cClosure(L0)
 			local total = Luau.lua_gettop(L1)
 			local retCount = total - numArgs
 
-			print(retCount)
-
 			return retCount
 		end),
 		Wasm.cstr(""),
 		1
 	)
+
+	return 1
+end
+
+--[[
+	Will clone the function that is at the given positon on the stack
+]]
+local function cloneFunction(L)
+	Luau.luaL_checktype(L, -1, Luau.LUA_TFUNCTION)
+
+	Luau.lua_clonefunction(L, -1)
 
 	return 1
 end
@@ -43,6 +52,7 @@ return function(sandbox)
 	for name, callback in
 		{
 			cClosure = cClosure,
+			cloneFunction = cloneFunction,
 		} :: { [string]: any }
 	do
 		Luau.lua_pushcfunction(sandbox.L, Wasm.cfn(callback), Wasm.cstr(name))
