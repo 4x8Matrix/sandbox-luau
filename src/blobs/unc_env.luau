@@ -4,6 +4,7 @@
 
 return [=[
 local vfs = {}
+local hiFolder
 
 glob.set("readfile", closures.cClosure(function(path: string)
 	local components = string.split(path, "/")
@@ -13,7 +14,7 @@ glob.set("readfile", closures.cClosure(function(path: string)
 		if index == #components then
 			break
 		end
-		
+
 		root = root[head]
 	end
 
@@ -28,13 +29,11 @@ glob.set("listfiles", closures.cClosure(function(path: string)
 		if not root[head] then
 			root[head] = {}
 		end
-		
+
 		root = root[head]
 	end
 
 	local files = {}
-
-	print("root:", root)
 
 	for fileName, data in root do
 		table.insert(files, `{path}/{fileName}`)
@@ -55,7 +54,7 @@ glob.set("writefile", closures.cClosure(function(path: string, data: string)
 		if not root[head] then
 			root[head] = {}
 		end
-		
+
 		root = root[head]
 	end
 
@@ -70,7 +69,7 @@ glob.set("makefolder", closures.cClosure(function(path: string)
 		if not root[head] then
 			root[head] = {}
 		end
-		
+
 		root = root[head]
 	end
 end))
@@ -91,7 +90,7 @@ glob.set("isfile", closures.cClosure(function(path: string)
 		if not root[head] then
 			root[head] = {}
 		end
-		
+
 		root = root[head]
 	end
 
@@ -110,7 +109,7 @@ glob.set("isfolder", closures.cClosure(function(path: string)
 		if not root[head] then
 			root[head] = {}
 		end
-		
+
 		root = root[head]
 	end
 
@@ -129,7 +128,7 @@ glob.set("delfolder", closures.cClosure(function(path: string)
 		if not root[head] then
 			root[head] = {}
 		end
-		
+
 		root = root[head]
 	end
 
@@ -148,7 +147,7 @@ glob.set("delfile", closures.cClosure(function(path: string)
 		if not root[head] then
 			root[head] = {}
 		end
-		
+
 		root = root[head]
 	end
 
@@ -156,9 +155,9 @@ glob.set("delfile", closures.cClosure(function(path: string)
 end))
 
 glob.set("clonefunction", closures.cClosure(function(caller)
-    return function(...)
-        return caller(...)
-    end
+	return function(...)
+		return caller(...)
+	end
 end))
 
 glob.set("checkcaller", closures.cClosure(function()
@@ -174,7 +173,9 @@ glob.set("iscclosure", closures.cClosure(function(f)
 end))
 
 glob.set("newcclosure", closures.cClosure(function(f)
-	return closures.cClosure(f)
+	return closures.cClosure(function(...)
+		return f(...)
+	end)
 end))
 
 glob.set("rconsoleclear", closures.cClosure(function(f) end))
@@ -187,5 +188,35 @@ glob.set("rconsoleinput", closures.cClosure(function(f) end))
 
 glob.set("rconsoleprint", closures.cClosure(function(f) end))
 
-glob.set("rconsolesettitle", closures.cClosure(function(f) end))
+glob.set("mouse1click", closures.cClosure(function(f) end))
+
+glob.set("mouse1press", closures.cClosure(function(f) end))
+
+glob.set("mouse1release", closures.cClosure(function(f) end))
+
+glob.set("mouse2click", closures.cClosure(function(f) end))
+
+glob.set("mouse2press", closures.cClosure(function(f) end))
+
+glob.set("mouse2release", closures.cClosure(function(f) end))
+
+glob.set("mousemoveabs", closures.cClosure(function(f) end))
+
+glob.set("mousemoverel", closures.cClosure(function(f) end))
+
+glob.set("mousescroll", closures.cClosure(function(f) end))
+
+glob.set("fireclickdetector", closures.cClosure(function(f) end))
+
+glob.set("messagebox", closures.cClosure(function(f) end))
+
+glob.set("setclipboard", closures.cClosure(function(f) end))
+
+glob.set("setrbxclipboard", closures.cClosure(function(f) end))
+
+glob.set("queue_on_teleport", closures.cClosure(function(f) end))
+
+glob.set("identifyexecutor", closures.cClosure(function(f)
+	return "Sandbox-Luau", "-1"
+end))
 ]=]
